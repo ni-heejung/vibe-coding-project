@@ -38,8 +38,8 @@ export const POST = async (
   try {
     await prisma.favorites.create({
       data: {
-        favoriting: { connect: { id: articleId } },
-        favoritedBy: { connect: { id: userId } },
+        articleId,
+        userId,
       },
     })
     revalidate(params.slug)
@@ -57,7 +57,7 @@ export const DELETE = async (
 ) => {
   const currentUser = await getCurrentUser()
   if (!currentUser) {
-    throw new Error('User not login')
+    return ApiResponse.unauthorized()
   }
 
   const article = await prisma.article.findUnique({

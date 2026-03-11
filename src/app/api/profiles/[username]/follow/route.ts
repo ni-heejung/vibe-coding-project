@@ -32,26 +32,20 @@ export const POST = async (
     return ApiResponse.notFound('User not exists')
   }
 
-  await prisma.user.update({
+  await prisma.follows.upsert({
     where: {
-      id: currentUser.id,
-    },
-    data: {
-      following: {
-        connectOrCreate: {
-          where: {
-            followerId_followingId: {
-              followerId: currentUser.id,
-              followingId: followUser.id,
-            },
-          },
-          create: {
-            followingId: followUser.id,
-          },
-        },
+      followerId_followingId: {
+        followerId: currentUser.id,
+        followingId: followUser.id,
       },
     },
+    update: {},
+    create: {
+      followerId: currentUser.id,
+      followingId: followUser.id,
+    },
   })
+
   revalidate()
   return ApiResponse.ok({ profile: userMapper(followUser, true) })
 }
@@ -74,19 +68,10 @@ export const DELETE = async (
     return ApiResponse.notFound('User not exists')
   }
 
-  await prisma.user.update({
+  await prisma.follows.deleteMany({
     where: {
-      id: currentUser.id,
-    },
-    data: {
-      following: {
-        delete: {
-          followerId_followingId: {
-            followerId: currentUser.id,
-            followingId: followUser.id,
-          },
-        },
-      },
+      followerId: currentUser.id,
+      followingId: followUser.id,
     },
   })
 

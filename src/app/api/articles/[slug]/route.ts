@@ -86,19 +86,26 @@ export const PUT = async (
         description,
         body: articleBody,
         slug: article.slug,
-        tagList: {
-          deleteMany: { articleId: article.id },
-          create: tagList?.map((tag) => ({
-            tag: {
-              connectOrCreate: {
-                create: { name: tag },
-                where: { name: tag },
-              },
-            },
-          })),
-        },
       },
     })
+
+    await prisma.articlesTags.deleteMany({ where: { articleId: article.id } })
+
+    if (tagList && tagList.length > 0) {
+      for (const tagName of tagList) {
+        const tag = await prisma.tag.upsert({
+          where: { name: tagName },
+          update: {},
+          create: { name: tagName },
+        })
+        await prisma.articlesTags.create({
+          data: {
+            articleId: article.id,
+            tagId: tag.id,
+          },
+        })
+      }
+    }
 
     return ApiResponse.ok({ article: updatedArticle })
   } catch (e) {

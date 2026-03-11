@@ -23,10 +23,11 @@ export const POST = async (req: NextRequest) => {
     return !!(await prisma.article.findFirst({ where: { slug } }))
   }
 
-  let slugTitle = slug(title)
+  const baseSlug = slug(title)
+  let slugTitle = baseSlug
   let counter = 1
-  while (await isSlugExist(slugTitle)) {
-    slugTitle = `${slugTitle}-${counter}`
+  while ((await isSlugExist(slugTitle)) && counter < 100) {
+    slugTitle = `${baseSlug}-${counter}`
     counter++
   }
 
@@ -38,20 +39,27 @@ export const POST = async (req: NextRequest) => {
         description,
         body: articleBody,
         authorId: currentUser.id,
-        tagList: {
-          create: tagList?.map((tag) => ({
-            tag: {
-              connectOrCreate: {
-                create: { name: tag },
-                where: { name: tag },
-              },
-            },
-          })),
-        },
       },
     })
+
+    if (tagList && tagList.length > 0) {
+      for (const tagName of tagList) {
+        const tag = await prisma.tag.upsert({
+          where: { name: tagName },
+          update: {},
+          create: { name: tagName },
+        })
+        await prisma.articlesTags.create({
+          data: {
+            articleId: article.id,
+            tagId: tag.id,
+          },
+        })
+      }
+    }
+
     return ApiResponse.ok({ article })
-  } catch (e: any) {
+  } catch (e: unknown) {
     return ApiResponse.badRequest('Create article failed')
   }
 }

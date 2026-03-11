@@ -9,13 +9,13 @@ datasource db {
 }
 
 model Article {
-  id              String          @id
+  id              String          @id @default(cuid())
   slug            String          @unique
   title           String
   description     String
   body            String
   createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @map("updated_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
   authorId        String          @map("author_id")
   del             Boolean         @default(false)
   favoritesCount  Int             @default(0) @map("favorites_count")
@@ -38,9 +38,9 @@ model ArticlesTags {
 }
 
 model Comment {
-  id        String   @id
+  id        String   @id @default(cuid())
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
   body      String
   articleId String   @map("article_id")
   authorId  String   @map("author_id")
@@ -72,7 +72,7 @@ model Follows {
 }
 
 model Tag {
-  id       String         @id
+  id       String         @id @default(cuid())
   name     String         @unique
   articles ArticlesTags[]
 
@@ -80,7 +80,7 @@ model Tag {
 }
 
 model User {
-  id         String      @id
+  id         String      @id @default(cuid())
   bio        String?
   email      String      @unique
   image      String?
