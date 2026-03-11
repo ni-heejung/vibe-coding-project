@@ -44,7 +44,7 @@ async function main() {
       password: '123456',
       email: 'alice@prisma.io',
       bio: 'I like turtles.',
-      image: 'https://api.realworld.io/images/demo-avatar.png',
+      image: 'https://i.pravatar.cc/150?u=alice',
       articles: {
         create: [
           {

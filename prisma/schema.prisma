@@ -4,93 +4,93 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL") // uses connection pooling
-  directUrl = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
-}
-
-model User {
-  id         String      @id @default(uuid())
-  bio        String?
-  email      String      @unique
-  image      String?
-  password   String
-  username   String      @unique
-  favorites  Favorites[]
-  followedBy Follows[]   @relation("following")
-  following  Follows[]   @relation("follower")
-  comments   Comment[]
-  articles   Article[]
-
-  @@map("user")
-}
-
-model Follows {
-  follower    User   @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
-  followerId  String @map("follower_id")
-  following   User   @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
-  followingId String @map("following_id")
-
-  @@id([followerId, followingId])
-  @@map("follows")
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
 model Article {
-  id             String         @id @default(uuid())
-  slug           String         @unique
-  title          String
-  description    String
-  body           String
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
-  tagList        ArticlesTags[]
-  author         User           @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  authorId       String         @map("author_id")
-  favoritedBy    Favorites[]
-  comments       Comment[]
-  del            Boolean        @default(false)
-  favoritesCount Int            @default(0) @map("favorites_count")
+  id              String          @id
+  slug            String          @unique
+  title           String
+  description     String
+  body            String
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @map("updated_at")
+  authorId        String          @map("author_id")
+  del             Boolean         @default(false)
+  favoritesCount  Int             @default(0) @map("favorites_count")
+  author          User            @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  tagList         ArticlesTags[]
+  comments        Comment[]
+  favoritedBy     Favorites[]
 
   @@map("article")
 }
 
-model Favorites {
-  favoriting  Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  articleId   String  @map("article_id")
-  favoritedBy User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String  @map("user_id")
-
-  @@id([articleId, userId])
-  @@map("favorites")
-}
-
-model Comment {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  body      String
-  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  articleId String   @map("article_id")
-  author    User     @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  authorId  String   @map("author_id")
-  del       Boolean  @default(false)
-
-  @@map("comment")
-}
-
 model ArticlesTags {
-  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
   articleId String  @map("article_id")
-  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
   tagId     String  @map("tag_id")
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([articleId, tagId])
   @@map("articles_tags")
 }
 
+model Comment {
+  id        String   @id
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @map("updated_at")
+  body      String
+  articleId String   @map("article_id")
+  authorId  String   @map("author_id")
+  del       Boolean  @default(false)
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@map("comment")
+}
+
+model Favorites {
+  articleId String  @map("article_id")
+  userId    String  @map("user_id")
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, userId])
+  @@map("favorites")
+}
+
+model Follows {
+  followerId  String @map("follower_id")
+  followingId String @map("following_id")
+  follower    User   @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User   @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@map("follows")
+}
+
 model Tag {
-  id       String         @id @default(uuid())
+  id       String         @id
   name     String         @unique
   articles ArticlesTags[]
 
   @@map("tag")
+}
+
+model User {
+  id         String      @id
+  bio        String?
+  email      String      @unique
+  image      String?
+  password   String
+  username   String      @unique
+  articles   Article[]
+  comments   Comment[]
+  favorites  Favorites[]
+  followers  Follows[]   @relation("following")
+  followedBy Follows[]   @relation("follower")
+
+  @@map("user")
 }
