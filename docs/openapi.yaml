@@ -1,0 +1,809 @@
+openapi: 3.1.0
+info:
+  title: Next.js RealWorld API
+  version: 1.0.0
+  description: |
+    RealWorld Example App API - Next.js 14, React, Prisma, PostgreSQL
+
+    A fully-featured social blogging platform with authentication, articles, comments, and user profiles.
+    Built with Next.js 14 App Router architecture.
+
+    **Key Features:**
+    - JWT-based authentication via NextAuth
+    - Article CRUD operations with Markdown support
+    - Commenting system
+    - User profiles and following
+    - Article favoriting
+    - Tag-based filtering
+    - Internationalization (i18n)
+
+    **Demo:** https://next-fullstack-realworld-app.vercel.app/
+  contact:
+    name: API Support
+    url: https://github.com/imheejung/next-fullstack-realworld-app
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+  - url: https://next-fullstack-realworld-app.vercel.app/api
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and registration
+  - name: Articles
+    description: Article CRUD operations
+  - name: Comments
+    description: Comment management
+  - name: Favorites
+    description: Article favoriting
+  - name: Users
+    description: User profile management
+  - name: Profiles
+    description: User profiles and following
+
+paths:
+  /users:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account with username, email, and password
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user
+              properties:
+                user:
+                  $ref: '#/components/schemas/UserRegistration'
+            examples:
+              registration:
+                summary: User registration example
+                value:
+                  user:
+                    username: "johndoe"
+                    email: "john@example.com"
+                    password: "password123"
+      responses:
+        '200':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+              examples:
+                success:
+                  summary: Successful registration
+                  value:
+                    user:
+                      id: "550e8400-e29b-41d4-a716-446655440000"
+                      username: "johndoe"
+                      email: "john@example.com"
+                      bio: null
+                      image: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /user:
+    put:
+      tags:
+        - Users
+      summary: Update current user
+      description: Update user profile information including password
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user
+              properties:
+                user:
+                  $ref: '#/components/schemas/UserUpdate'
+            examples:
+              update:
+                summary: Update user profile
+                value:
+                  user:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    username: "johndoe_updated"
+                    email: "john.new@example.com"
+                    bio: "Full-stack developer"
+                    image: "https://example.com/avatar.jpg"
+                    password: "newpassword123"
+      responses:
+        '200':
+          description: User successfully updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /articles:
+    post:
+      tags:
+        - Articles
+      summary: Create a new article
+      description: |
+        Create a new article with title, description, body, and optional tags.
+        Slug is automatically generated from the title.
+      operationId: createArticle
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - article
+              properties:
+                article:
+                  $ref: '#/components/schemas/ArticleInput'
+            examples:
+              newArticle:
+                summary: Create article example
+                value:
+                  article:
+                    title: "How to build a Next.js app"
+                    description: "A comprehensive guide"
+                    body: "# Introduction\n\nThis is a detailed guide..."
+                    tagList: ["nextjs", "react", "tutorial"]
+      responses:
+        '200':
+          description: Article successfully created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  article:
+                    $ref: '#/components/schemas/Article'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /articles/{slug}:
+    parameters:
+      - $ref: '#/components/parameters/slug'
+
+    put:
+      tags:
+        - Articles
+      summary: Update an article
+      description: Update an existing article (author only)
+      operationId: updateArticle
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - article
+              properties:
+                article:
+                  $ref: '#/components/schemas/ArticleUpdate'
+            examples:
+              updateArticle:
+                summary: Update article example
+                value:
+                  article:
+                    title: "How to build a Next.js app (Updated)"
+                    description: "An updated comprehensive guide"
+                    body: "# Introduction (Updated)\n\nThis is an updated guide..."
+                    tagList: ["nextjs", "react", "tutorial", "advanced"]
+      responses:
+        '200':
+          description: Article successfully updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  article:
+                    $ref: '#/components/schemas/Article'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Articles
+      summary: Delete an article
+      description: Delete an existing article (author only)
+      operationId: deleteArticle
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Article successfully deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /articles/{slug}/comments:
+    parameters:
+      - $ref: '#/components/parameters/slug'
+
+    get:
+      tags:
+        - Comments
+      summary: Get article comments
+      description: Retrieve all comments for a specific article
+      operationId: getComments
+      responses:
+        '200':
+          description: Comments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+              examples:
+                comments:
+                  summary: Article comments
+                  value:
+                    comments:
+                      - id: "123e4567-e89b-12d3-a456-426614174000"
+                        body: "Great article!"
+                        createdAt: "2024-01-01T12:00:00.000Z"
+                        updatedAt: "2024-01-01T12:00:00.000Z"
+                        author:
+                          id: "550e8400-e29b-41d4-a716-446655440000"
+                          username: "janedoe"
+                          bio: "Software engineer"
+                          image: "https://example.com/avatar.jpg"
+                          following: false
+
+    post:
+      tags:
+        - Comments
+      summary: Add comment to article
+      description: Create a new comment on an article
+      operationId: createComment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - comment
+              properties:
+                comment:
+                  type: string
+                  minLength: 1
+                  maxLength: 65535
+                  description: Comment body text
+            examples:
+              newComment:
+                summary: New comment
+                value:
+                  comment: "This is a great article! Thanks for sharing."
+      responses:
+        '200':
+          description: Comment successfully created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comment:
+                    $ref: '#/components/schemas/Comment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /articles/{slug}/comments/{commentId}:
+    parameters:
+      - $ref: '#/components/parameters/slug'
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Comment UUID
+
+    delete:
+      tags:
+        - Comments
+      summary: Delete a comment
+      description: Delete a comment from an article (author only)
+      operationId: deleteComment
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Comment successfully deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /articles/{slug}/favorite:
+    parameters:
+      - $ref: '#/components/parameters/slug'
+
+    post:
+      tags:
+        - Favorites
+      summary: Favorite an article
+      description: Add article to current user's favorites
+      operationId: favoriteArticle
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Article favorited successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  article:
+                    $ref: '#/components/schemas/Article'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Favorites
+      summary: Unfavorite an article
+      description: Remove article from current user's favorites
+      operationId: unfavoriteArticle
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Article unfavorited successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  article:
+                    $ref: '#/components/schemas/Article'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /profiles/{username}/follow:
+    parameters:
+      - name: username
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 20
+        description: Username to follow/unfollow
+
+    post:
+      tags:
+        - Profiles
+      summary: Follow a user
+      description: Follow another user
+      operationId: followUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User followed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    $ref: '#/components/schemas/Profile'
+              examples:
+                followed:
+                  summary: Following user
+                  value:
+                    profile:
+                      id: "550e8400-e29b-41d4-a716-446655440000"
+                      username: "janedoe"
+                      bio: "Software engineer"
+                      image: "https://example.com/avatar.jpg"
+                      email: "jane@example.com"
+                      following: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Profiles
+      summary: Unfollow a user
+      description: Unfollow a user
+      operationId: unfollowUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User unfollowed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    $ref: '#/components/schemas/Profile'
+              examples:
+                unfollowed:
+                  summary: Unfollowed user
+                  value:
+                    profile:
+                      id: "550e8400-e29b-41d4-a716-446655440000"
+                      username: "janedoe"
+                      bio: "Software engineer"
+                      image: "https://example.com/avatar.jpg"
+                      email: "jane@example.com"
+                      following: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: NextAuth JWT token
+
+  parameters:
+    slug:
+      name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Article slug (URL-safe identifier)
+      example: how-to-build-nextjs-app
+
+  schemas:
+    UserRegistration:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          maxLength: 20
+          description: Unique username
+          example: "johndoe"
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "john@example.com"
+        password:
+          type: string
+          minLength: 6
+          format: password
+          description: User password (min 6 characters)
+          example: "password123"
+
+    UserUpdate:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: User ID
+        username:
+          type: string
+          maxLength: 20
+          description: Updated username
+        email:
+          type: string
+          format: email
+          description: Updated email
+        bio:
+          type: string
+          nullable: true
+          description: User biography
+        image:
+          type: string
+          format: uri
+          nullable: true
+          description: Profile image URL
+        password:
+          type: string
+          minLength: 6
+          format: password
+          description: New password (optional)
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: User UUID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        username:
+          type: string
+          maxLength: 20
+          example: "johndoe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        bio:
+          type: string
+          nullable: true
+          example: "Full-stack developer"
+        image:
+          type: string
+          format: uri
+          nullable: true
+          example: "https://example.com/avatar.jpg"
+
+    Profile:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            following:
+              type: boolean
+              description: Whether current user follows this profile
+              example: false
+
+    ArticleInput:
+      type: object
+      required:
+        - title
+        - body
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Article title
+          example: "How to build a Next.js app"
+        description:
+          type: string
+          description: Short article description
+          example: "A comprehensive guide to Next.js"
+        body:
+          type: string
+          minLength: 1
+          maxLength: 65535
+          description: Article content (Markdown)
+          example: "# Introduction\n\nThis is a detailed guide..."
+        tagList:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+          description: Article tags
+          example: ["nextjs", "react", "tutorial"]
+
+    ArticleUpdate:
+      allOf:
+        - $ref: '#/components/schemas/ArticleInput'
+
+    Article:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Article UUID
+        slug:
+          type: string
+          description: URL-safe article identifier
+          example: "how-to-build-nextjs-app"
+        title:
+          type: string
+          example: "How to build a Next.js app"
+        description:
+          type: string
+          example: "A comprehensive guide to Next.js"
+        body:
+          type: string
+          description: Article content (Markdown)
+        tagList:
+          type: array
+          items:
+            type: string
+          example: ["nextjs", "react", "tutorial"]
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T12:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T12:00:00.000Z"
+        author:
+          $ref: '#/components/schemas/Profile'
+        favorited:
+          type: boolean
+          description: Whether current user favorited this article
+          example: false
+        favoritesCount:
+          type: integer
+          description: Total favorites count
+          example: 42
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Comment UUID
+        body:
+          type: string
+          minLength: 1
+          maxLength: 65535
+          description: Comment text
+          example: "Great article!"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T12:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T12:00:00.000Z"
+        author:
+          allOf:
+            - type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                username:
+                  type: string
+                bio:
+                  type: string
+                  nullable: true
+                image:
+                  type: string
+                  format: uri
+                following:
+                  type: boolean
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Error message
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors by field
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              summary: Bad request error
+              value:
+                message: "Validation failed"
+                errors:
+                  title: ["Title is required"]
+
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              summary: Unauthorized error
+              value:
+                message: "Authentication required"
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              summary: Forbidden error
+              value:
+                message: "You don't have permission to perform this action"
+
+    NotFound:
+      description: Not found - Resource doesn't exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              summary: Not found error
+              value:
+                message: "Resource not found"
+
+    ValidationError:
+      description: Validation error - Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            error:
+              summary: Validation error
+              value:
+                message: "Validation failed"
+                errors:
+                  email: ["Invalid email format"]
+                  password: ["Password is too short"]

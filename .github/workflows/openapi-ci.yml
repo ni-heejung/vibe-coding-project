@@ -1,0 +1,186 @@
+name: OpenAPI CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'specs/**'
+      - 'src/**'
+      - 'scripts/**'
+      - '.github/workflows/openapi-ci.yml'
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  validate-spec:
+    name: Validate OpenAPI Spec
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint OpenAPI Spec
+        run: npm run spec:lint
+
+      - name: Validate OpenAPI Spec
+        run: npm run spec:validate
+
+      - name: Upload spec artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: openapi-spec
+          path: specs/openapi.yaml
+
+  generate-code:
+    name: Generate Code from Spec
+    needs: validate-spec
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate TypeScript types
+        run: npm run generate:types
+
+      - name: Generate API client
+        run: npm run generate:client
+
+      - name: Generate Zod schemas
+        run: npm run generate:zod
+
+      - name: Upload generated code
+        uses: actions/upload-artifact@v3
+        with:
+          name: generated-code
+          path: generated/
+
+  contract-tests:
+    name: Contract Tests
+    needs: generate-code
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: realworld_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download generated code
+        uses: actions/download-artifact@v3
+        with:
+          name: generated-code
+          path: generated/
+
+      - name: Setup database
+        run: |
+          npm run migrate
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/realworld_test
+
+      - name: Run contract tests
+        run: npm run test:contract
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/realworld_test
+          NEXTAUTH_SECRET: test-secret
+          NEXTAUTH_URL: http://localhost:3000
+
+  build:
+    name: Build Application
+    needs: contract-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download generated code
+        uses: actions/download-artifact@v3
+        with:
+          name: generated-code
+          path: generated/
+
+      - name: Build application
+        run: npm run build
+        env:
+          SKIP_ENV_VALIDATION: true
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: nextjs-build
+          path: .next/
+
+  deploy-docs:
+    name: Deploy API Documentation
+    needs: validate-spec
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build documentation
+        run: npx @redocly/cli build-docs specs/openapi.yaml --output docs/api.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          destination_dir: api-docs
