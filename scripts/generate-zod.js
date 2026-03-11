@@ -33,7 +33,27 @@ function generateZodSchema(name, schema) {
     const type = propSchema.type;
     const format = propSchema.format;
 
-    let zodType = typeMapping[type] || 'z.any()';
+    let zodType = 'z.any()';
+
+    // 타입별 처리
+    if (type === 'string') {
+      zodType = 'z.string()';
+    } else if (type === 'integer') {
+      zodType = 'z.number().int()';
+    } else if (type === 'number') {
+      zodType = 'z.number()';
+    } else if (type === 'boolean') {
+      zodType = 'z.boolean()';
+    } else if (type === 'array') {
+      const itemType = propSchema.items?.type || 'string';
+      const itemZodType = itemType === 'string' ? 'z.string()' :
+                          itemType === 'number' ? 'z.number()' :
+                          itemType === 'integer' ? 'z.number().int()' :
+                          itemType === 'boolean' ? 'z.boolean()' : 'z.any()';
+      zodType = `z.array(${itemZodType})`;
+    } else if (type === 'object') {
+      zodType = 'z.object({})';
+    }
 
     // 특수 포맷 처리
     if (format === 'email') zodType = 'z.string().email()';
