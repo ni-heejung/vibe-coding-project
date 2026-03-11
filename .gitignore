@@ -39,5 +39,10 @@ next-env.d.ts
 /generated/
 generated/
 
+# Playwright
+/playwright-report/
+/e2e/test-results/
+/e2e/screenshots/
+
 # OMC
 .omc/
