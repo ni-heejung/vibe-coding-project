@@ -1,8 +1,8 @@
 import { Link } from '@/navigation'
-import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 const Footer = async () => {
-  const t = useTranslations('Footer')
+  const t = await getTranslations('Footer')
 
   return (
     <footer>

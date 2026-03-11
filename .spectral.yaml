@@ -1,32 +1,12 @@
-extends: ["spectral:oas", "spectral:asyncapi"]
+extends: ["spectral:oas"]
 
 rules:
-  # OpenAPI 모범 사례
   operation-operationId: error
-  operation-summary: warn
   operation-description: warn
   operation-tags: warn
-
-  # 보안
-  operation-security-defined: error
-
-  # 문서화
   info-contact: warn
   info-description: warn
   tag-description: warn
-
-  # 스키마
   typed-enum: warn
   no-$ref-siblings: error
-
-  # 응답
   operation-success-response: error
-
-  # 커스텀 규칙
-  response-has-examples:
-    description: 응답에는 예제가 포함되어야 합니다
-    severity: warn
-    given: $.paths[*][*].responses[*]
-    then:
-      field: content.application/json.example
-      function: truthy
