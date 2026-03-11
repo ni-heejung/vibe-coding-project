@@ -1,0 +1,31 @@
+{
+  "$schema": "https://claude.ai/hooks-schema.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "commands": [
+          {
+            "type": "shell",
+            "command": "./scripts/update-readme.sh",
+            "timeout": 10000,
+            "description": "README 상태 확인"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "commands": [
+          {
+            "type": "shell",
+            "command": "./scripts/update-readme.sh",
+            "timeout": 10000,
+            "description": "세션 종료 시 README 상태 확인"
+          }
+        ]
+      }
+    ]
+  }
+}
